@@ -17,6 +17,9 @@ use core::fmt;
 
 use slab::Slab;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Stores values to be yielded at specific times in the future
 ///
 /// Time is expressed as a bare u64 representing an absolute point in time. The caller may use any
@@ -24,6 +27,7 @@ use slab::Slab;
 /// limit resolution but make `poll`ing over the same real-time interval proportionately faster,
 /// whereas smaller units improve resolution, limit total range, and reduce `poll` performance.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TimerQueue<T> {
     /// Definitions of each active timer
     ///
@@ -105,6 +109,7 @@ pub struct TimerQueue<T> {
     /// and the use of unordered doubly linked lists to represent the contents of a slot. We can
     /// also compute a lower bound for the next timeout in constant time by scanning for the
     /// earliest nonempty slot.
+    #[cfg_attr(feature = "serde", serde(with = "serde_arrays"))]
     levels: [Level; LEVELS],
 
     /// Earliest point at which a timer may be pending
@@ -384,6 +389,7 @@ impl<T> Default for TimerQueue<T> {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 struct TimerState<T> {
     /// Lowest argument to `poll` for which this timer may be returned
     expiry: u64,
@@ -400,7 +406,9 @@ struct TimerState<T> {
 /// Level `n` spans `2^(LOG_2_SLOTS * (n+1))` ticks, and each of its slots corresponds to a span of
 /// `2^(LOG_2_SLOTS * n)`.
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 struct Level {
+    #[cfg_attr(feature = "serde", serde(with = "serde_arrays"))]
     slots: [Timer; SLOTS],
     /// Bit n indicates whether slot n is occupied, counting from LSB up
     occupied: u64,
@@ -475,6 +483,7 @@ const SLOTS: usize = 1 << LOG_2_SLOTS;
 // Index in `TimerQueue::timers`. Future work: add a niche here.
 /// Handle to a specific timer, obtained from [`TimerQueue::insert`]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Timer(usize);
 
 #[cfg(test)]
